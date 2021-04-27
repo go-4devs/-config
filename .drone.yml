@@ -6,6 +6,7 @@ services:
     image: vault:1.7.1
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: dev
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
   - name: etcd
     image: bitnami/etcd:3
     environment:
