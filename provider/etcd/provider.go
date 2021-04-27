@@ -3,7 +3,6 @@ package etcd
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"gitoa.ru/go-4devs/config"
 	"gitoa.ru/go-4devs/config/key"
@@ -83,7 +82,6 @@ func (p *Provider) getEventKvs(events []*client.Event) ([]*pb.KeyValue, []*pb.Ke
 	for i := range events {
 		kvs = append(kvs, events[i].Kv)
 		old = append(old, events[i].PrevKv)
-		log.Println(events[i].Type)
 	}
 
 	return kvs, old
