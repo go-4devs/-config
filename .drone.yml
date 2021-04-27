@@ -1,0 +1,26 @@
+kind: pipeline
+name: default
+
+services:
+  - name: vault
+    image: vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev
+  - name: etcd
+    image: bitnami/etcd
+
+environment:
+  VAULT_DEV_LISTEN_ADDRESS: vault:8200
+  VAULT_DEV_ROOT_TOKEN_ID: dev
+  FDEVS_CONFIG_ETCD_HOST: etcd:2379
+
+steps:
+- name: test 
+  image: golang
+  commands:
+  - go test -parallel 10 -race ./... 
+
+- name: golangci-lint
+  image: golangci/golangci-lint:v1.39
+  commands:
+  - golangci-lint run

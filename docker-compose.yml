@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  vault:
+    image: vault:latest
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment: 
+      VAULT_DEV_ROOT_TOKEN_ID: "dev"
+  etcd:
+    image: bitnami/etcd
+    environment: 
+      ALLOW_NONE_AUTHENTICATION: "yes"
+    ports: 
+      - "2379:2379"
