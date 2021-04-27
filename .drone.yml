@@ -10,7 +10,7 @@ services:
     image: bitnami/etcd
 
 environment:
-  VAULT_DEV_LISTEN_ADDRESS: vault:8200
+  VAULT_DEV_LISTEN_ADDRESS: http://vault:8200
   VAULT_DEV_ROOT_TOKEN_ID: dev
   FDEVS_CONFIG_ETCD_HOST: etcd:2379
 
