@@ -19,7 +19,7 @@ import (
 	"gitoa.ru/go-4devs/config/test"
 )
 
-func ExampleNew() {
+func ExampleClient_Value() {
 	ctx := context.Background()
 	_ = os.Setenv("FDEVS_CONFIG_LISTEN", "8080")
 	_ = os.Setenv("FDEVS_CONFIG_HOST", "localhost")
@@ -51,14 +51,18 @@ func ExampleNew() {
 	// read json config
 	jsonConfig := test.ReadFile("config.json")
 
-	providers := []config.Provider{
+	config, err := config.New(test.Namespace, test.AppName,
 		arg.New(),
 		env.New(),
 		etcd.NewProvider(etcdClient),
 		vault.NewSecretKV2(vaultClient),
 		json.New(jsonConfig),
+	)
+	if err != nil {
+		log.Print(err)
+
+		return
 	}
-	config := config.New(test.Namespace, test.AppName, providers)
 
 	dsn, err := config.Value(ctx, "example:dsn")
 	if err != nil {
@@ -120,7 +124,7 @@ func ExampleNew() {
 	// replace env host by args: gitoa.ru
 }
 
-func ExampleNewWatch() {
+func ExampleClient_Watch() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -151,12 +155,17 @@ func ExampleNewWatch() {
 		}
 	}()
 
-	providers := []config.Provider{
+	watcher, err := config.New(test.Namespace, test.AppName,
 		watcher.New(time.Microsecond, env.New()),
-		watcher.New(time.Microsecond, yaml.NewFile("test/fixture/config.yaml")),
+		watcher.New(time.Microsecond, yaml.NewWatch("test/fixture/config.yaml")),
 		etcd.NewProvider(etcdClient),
+	)
+	if err != nil {
+		log.Print(err)
+
+		return
 	}
-	watcher := config.NewWatch(test.Namespace, test.AppName, providers)
+
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
@@ -195,4 +204,91 @@ func ExampleNewWatch() {
 	// Output:
 	// update  env  variable: FDEVS_CONFIG_EXAMPLE_ENABLE , old:  true  new: false
 	// update  etcd  variable: fdevs/config/example_db_dsn , old:  pgsql://user@pass:127.0.0.1:5432  new: mysql://localhost:5432
+}
+
+func ExampleClient_Value_factory() {
+	ctx := context.Background()
+	_ = os.Setenv("FDEVS_CONFIG_LISTEN", "8080")
+	_ = os.Setenv("FDEVS_CONFIG_HOST", "localhost")
+
+	args := os.Args
+
+	defer func() {
+		os.Args = args
+	}()
+
+	os.Args = []string{"main.go", "--config-json=config.json", "--config-yaml=test/fixture/config.yaml"}
+
+	config, err := config.New(test.Namespace, test.AppName,
+		arg.New(),
+		env.New(),
+		config.Factory(func(ctx context.Context, cfg config.ReadConfig) (config.Provider, error) {
+			val, err := cfg.Value(ctx, "config-json")
+			if err != nil {
+				return nil, fmt.Errorf("failed read config file:%w", err)
+			}
+			jsonConfig := test.ReadFile(val.String())
+
+			return json.New(jsonConfig), nil
+		}),
+		config.Factory(func(ctx context.Context, cfg config.ReadConfig) (config.Provider, error) {
+			val, err := cfg.Value(ctx, "config-yaml")
+			if err != nil {
+				return nil, fmt.Errorf("failed read config file:%w", err)
+			}
+
+			provader, err := yaml.NewFile(val.String())
+			if err != nil {
+				return nil, fmt.Errorf("failed init by file %v:%w", val.String(), err)
+			}
+
+			return provader, nil
+		}),
+	)
+	if err != nil {
+		log.Print(err)
+
+		return
+	}
+
+	port, err := config.Value(ctx, "listen")
+	if err != nil {
+		log.Print(err)
+
+		return
+	}
+
+	title, err := config.Value(ctx, "app.name.title")
+	if err != nil {
+		log.Print(err)
+
+		return
+	}
+
+	yamlTitle, err := config.Value(ctx, "app/title")
+	if err != nil {
+		log.Print(err)
+
+		return
+	}
+
+	cfgValue, err := config.Value(ctx, "cfg")
+	if err != nil {
+		log.Print(err)
+
+		return
+	}
+
+	cfg := test.Config{}
+	_ = cfgValue.Unmarshal(&cfg)
+
+	fmt.Printf("listen from env: %d\n", port.Int())
+	fmt.Printf("title from json: %v\n", title.String())
+	fmt.Printf("title from yaml: %v\n", yamlTitle.String())
+	fmt.Printf("struct from json: %+v\n", cfg)
+	// Output:
+	// listen from env: 8080
+	// title from json: config title
+	// title from yaml: yaml title
+	// struct from json: {Duration:21m0s Enabled:true}
 }

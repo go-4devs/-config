@@ -47,7 +47,7 @@ type Provider struct {
 func (p *Provider) Watch(ctx context.Context, key config.Key, callback config.WatchCallback) error {
 	oldVar, err := p.Provider.Read(ctx, key)
 	if err != nil {
-		return fmt.Errorf("%s: failed watch variable: %w", p.Provider.Name(), err)
+		return fmt.Errorf("failed watch variable: %w", err)
 	}
 
 	go func() {

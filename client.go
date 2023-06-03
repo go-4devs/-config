@@ -4,14 +4,82 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 )
 
-func New(namespace, appName string, providers []Provider) *Client {
-	return &Client{
+func Must(namespace, appName string, providers ...interface{}) *Client {
+	client, err := New(namespace, appName, providers...)
+	if err != nil {
+		panic(err)
+	}
+
+	return client
+}
+
+func New(namespace, appName string, providers ...interface{}) (*Client, error) {
+	client := &Client{
 		namespace: namespace,
 		appName:   appName,
-		providers: providers,
+		providers: make([]Provider, len(providers)),
 	}
+
+	for idx, prov := range providers {
+		switch current := prov.(type) {
+		case Provider:
+			client.providers[idx] = current
+		case Factory:
+			client.providers[idx] = &provider{
+				factory: func(ctx context.Context) (Provider, error) {
+					return current(ctx, client)
+				},
+			}
+		default:
+			return nil, fmt.Errorf("provier[%d]: %w %T", idx, ErrUnknowType, prov)
+		}
+	}
+
+	return client, nil
+}
+
+type provider struct {
+	mu       sync.Mutex
+	done     uint32
+	provider Provider
+	factory  func(ctx context.Context) (Provider, error)
+}
+
+func (p *provider) init(ctx context.Context) (err error) {
+	if atomic.LoadUint32(&p.done) == 0 {
+		if !p.mu.TryLock() {
+			return fmt.Errorf("%w", ErrInitFactory)
+		}
+		defer atomic.StoreUint32(&p.done, 1)
+		defer p.mu.Unlock()
+		p.provider, err = p.factory(ctx)
+	}
+
+	return err
+}
+
+func (p *provider) Watch(ctx context.Context, key Key, callback WatchCallback) error {
+	if err := p.init(ctx); err != nil {
+		return fmt.Errorf("init read:%w", err)
+	}
+
+	if watch, ok := p.provider.(WatchProvider); ok {
+		return watch.Watch(ctx, key, callback)
+	}
+
+	return nil
+}
+
+func (p *provider) Read(ctx context.Context, key Key) (Variable, error) {
+	if err := p.init(ctx); err != nil {
+		return Variable{}, fmt.Errorf("init read:%w", err)
+	}
+
+	return p.provider.Read(ctx, key)
 }
 
 type Client struct {
@@ -47,7 +115,7 @@ func (c *Client) Variable(ctx context.Context, name string) (Variable, error) {
 
 	for _, provider := range c.providers {
 		variable, err = provider.Read(ctx, key)
-		if err == nil || !errors.Is(err, ErrVariableNotFound) {
+		if err == nil || !(errors.Is(err, ErrVariableNotFound) || errors.Is(err, ErrInitFactory)) {
 			break
 		}
 	}
@@ -59,36 +127,22 @@ func (c *Client) Variable(ctx context.Context, name string) (Variable, error) {
 	return variable, nil
 }
 
-func NewWatch(namespace, appName string, providers []Provider) *WatchClient {
-	cl := WatchClient{
-		Client: New(namespace, appName, providers),
-	}
+func (c *Client) Watch(ctx context.Context, name string, callback WatchCallback) error {
+	key := c.key(name)
 
-	for _, provider := range providers {
-		if watch, ok := provider.(WatchProvider); ok {
-			cl.providers = append(cl.providers, watch)
+	for idx, prov := range c.providers {
+		provider, ok := prov.(WatchProvider)
+		if !ok {
+			continue
 		}
-	}
 
-	return &cl
-}
-
-type WatchClient struct {
-	*Client
-	providers []WatchProvider
-}
-
-func (wc *WatchClient) Watch(ctx context.Context, name string, callback WatchCallback) error {
-	key := wc.key(name)
-
-	for _, provider := range wc.providers {
 		err := provider.Watch(ctx, key, callback)
 		if err != nil {
-			if errors.Is(err, ErrVariableNotFound) {
+			if errors.Is(err, ErrVariableNotFound) || errors.Is(err, ErrInitFactory) {
 				continue
 			}
 
-			return fmt.Errorf("client: failed watch by provider %s: %w", provider.Name(), err)
+			return fmt.Errorf("client: failed watch by provider[%d]: %w", idx, err)
 		}
 	}
 
