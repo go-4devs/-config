@@ -9,14 +9,14 @@ import (
 
 func LastIndex(sep string, factory config.KeyFactory) func(ctx context.Context, key config.Key) (string, string) {
 	return func(ctx context.Context, key config.Key) (string, string) {
-		k := factory(ctx, key)
+		name := factory(ctx, key)
 
-		idx := strings.LastIndex(k, sep)
+		idx := strings.LastIndex(name, sep)
 		if idx == -1 {
-			return k, ""
+			return name, ""
 		}
 
-		return k[0:idx], k[idx+len(sep):]
+		return name[0:idx], name[idx+len(sep):]
 	}
 }
 

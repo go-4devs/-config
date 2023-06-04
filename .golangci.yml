@@ -22,6 +22,8 @@ linters-settings:
       suggest-new: true
     misspell:
       locale: US  
+    varnamelen:
+      min-name-length: 2
 
 linters:
     enable-all: true
@@ -30,6 +32,16 @@ linters:
       - maligned
       - interfacer
       - scopelint
+      - exhaustruct
+      - depguard
+      - nolintlint
+      #deprecated
+      - structcheck
+      - varcheck
+      - golint
+      - deadcode
+      - ifshort
+      - nosnakecase
 
 issues:
   # Excluding configuration per-path, per-linter, per-text and per-source
@@ -39,8 +51,14 @@ issues:
         - gomnd
         - exhaustivestruct
         - wrapcheck
+        - exhaustruct
+        - varnamelen
+        - tenv
+        - funlen
     - path: test/*
       linters:
         - gomnd
         - exhaustivestruct
         - wrapcheck
+        - exhaustruct
+        - varnamelen

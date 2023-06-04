@@ -44,16 +44,16 @@ func (p *Provider) Name() string {
 }
 
 func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
-	k := p.key(ctx, key)
+	name := p.key(ctx, key)
 
-	resp, err := p.client.Get(ctx, k, client.WithPrefix())
+	resp, err := p.client.Get(ctx, name, client.WithPrefix())
 	if err != nil {
-		return config.Variable{}, fmt.Errorf("%w: key:%s, prov:%s", err, k, p.Name())
+		return config.Variable{}, fmt.Errorf("%w: key:%s, prov:%s", err, name, p.Name())
 	}
 
-	val, err := p.resolve(k, resp.Kvs)
+	val, err := p.resolve(name, resp.Kvs)
 	if err != nil {
-		return config.Variable{}, fmt.Errorf("%w: key:%s, prov:%s", err, k, p.Name())
+		return config.Variable{}, fmt.Errorf("%w: key:%s, prov:%s", err, name, p.Name())
 	}
 
 	return val, nil
@@ -94,6 +94,7 @@ func (p *Provider) resolve(key string, kvs []*pb.KeyValue) (config.Variable, err
 			return config.Variable{
 				Name:     key,
 				Provider: p.Name(),
+				Value:    nil,
 			}, nil
 		case string(kv.Key) == key:
 			return config.Variable{
@@ -104,8 +105,5 @@ func (p *Provider) resolve(key string, kvs []*pb.KeyValue) (config.Variable, err
 		}
 	}
 
-	return config.Variable{
-		Name:     key,
-		Provider: p.Name(),
-	}, config.ErrVariableNotFound
+	return config.Variable{}, fmt.Errorf("%w: name %s", config.ErrVariableNotFound, key)
 }

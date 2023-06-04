@@ -19,17 +19,17 @@ func WithKeyFactory(factory config.KeyFactory) Option {
 }
 
 func New(opts ...Option) *Provider {
-	p := Provider{
+	provider := Provider{
 		key: func(ctx context.Context, k config.Key) string {
 			return strings.ToUpper(key.NsAppName("_")(ctx, k))
 		},
 	}
 
 	for _, opt := range opts {
-		opt(&p)
+		opt(&provider)
 	}
 
-	return &p
+	return &provider
 }
 
 type Provider struct {
@@ -45,17 +45,14 @@ func (p *Provider) IsSupport(ctx context.Context, key config.Key) bool {
 }
 
 func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
-	k := p.key(ctx, key)
-	if val, ok := os.LookupEnv(k); ok {
+	name := p.key(ctx, key)
+	if val, ok := os.LookupEnv(name); ok {
 		return config.Variable{
-			Name:     k,
+			Name:     name,
 			Provider: p.Name(),
 			Value:    value.JString(val),
 		}, nil
 	}
 
-	return config.Variable{
-		Name:     k,
-		Provider: p.Name(),
-	}, config.ErrVariableNotFound
+	return config.Variable{}, config.ErrVariableNotFound
 }

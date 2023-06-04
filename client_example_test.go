@@ -284,11 +284,11 @@ func ExampleClient_Value_factory() {
 
 	fmt.Printf("listen from env: %d\n", port.Int())
 	fmt.Printf("title from json: %v\n", title.String())
-	fmt.Printf("title from yaml: %v\n", yamlTitle.String())
+	fmt.Printf("yaml title: %v\n", yamlTitle.String())
 	fmt.Printf("struct from json: %+v\n", cfg)
 	// Output:
 	// listen from env: 8080
 	// title from json: config title
-	// title from yaml: yaml title
+	// yaml title: yaml title
 	// struct from json: {Duration:21m0s Enabled:true}
 }

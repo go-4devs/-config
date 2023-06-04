@@ -13,10 +13,12 @@ import (
 var _ config.Provider = (*Provider)(nil)
 
 func New(data *ini.File) *Provider {
+	const nameParts = 2
+
 	return &Provider{
 		data: data,
 		resolve: func(ctx context.Context, key config.Key) (string, string) {
-			keys := strings.SplitN(key.Name, "/", 2)
+			keys := strings.SplitN(key.Name, "/", nameParts)
 			if len(keys) == 1 {
 				return "", keys[0]
 			}
@@ -46,12 +48,12 @@ func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, e
 
 	iniSection, err := p.data.GetSection(section)
 	if err != nil {
-		return config.Variable{}, fmt.Errorf("%w: %s: %v", config.ErrVariableNotFound, p.Name(), err)
+		return config.Variable{}, fmt.Errorf("%w: %s: %w", config.ErrVariableNotFound, p.Name(), err)
 	}
 
 	iniKey, err := iniSection.GetKey(name)
 	if err != nil {
-		return config.Variable{}, fmt.Errorf("%w: %s: %v", config.ErrVariableNotFound, p.Name(), err)
+		return config.Variable{}, fmt.Errorf("%w: %s: %w", config.ErrVariableNotFound, p.Name(), err)
 	}
 
 	return config.Variable{

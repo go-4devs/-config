@@ -33,10 +33,10 @@ func (p *Watch) Read(ctx context.Context, key config.Key) (config.Variable, erro
 		return config.Variable{}, fmt.Errorf("yaml_file: read error: %w", err)
 	}
 
-	var n yaml.Node
-	if err = yaml.Unmarshal(in, &n); err != nil {
+	var yNode yaml.Node
+	if err = yaml.Unmarshal(in, &yNode); err != nil {
 		return config.Variable{}, fmt.Errorf("yaml_file: unmarshal error: %w", err)
 	}
 
-	return p.prov.With(&n).Read(ctx, key)
+	return p.prov.With(&yNode).Read(ctx, key)
 }

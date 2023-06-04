@@ -22,12 +22,13 @@ func (p *provider) Name() string {
 	return "test"
 }
 
-func (p *provider) Read(ctx context.Context, k config.Key) (config.Variable, error) {
+func (p *provider) Read(context.Context, config.Key) (config.Variable, error) {
 	p.cnt++
 
 	return config.Variable{
-		Name:  "tmpname",
-		Value: value.JString(fmt.Sprint(p.cnt)),
+		Name:     "tmpname",
+		Provider: p.Name(),
+		Value:    value.JString(fmt.Sprint(p.cnt)),
 	}, nil
 }
 

@@ -24,16 +24,16 @@ func NewFile(file string, opts ...Option) (*Provider, error) {
 type Option func(*Provider)
 
 func configure(tree *toml.Tree, opts ...Option) *Provider {
-	p := &Provider{
+	prov := &Provider{
 		tree: tree,
 		key:  key.Name,
 	}
 
 	for _, opt := range opts {
-		opt(p)
+		opt(prov)
 	}
 
-	return p
+	return prov
 }
 
 func New(data []byte, opts ...Option) (*Provider, error) {

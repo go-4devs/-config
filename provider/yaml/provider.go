@@ -14,7 +14,7 @@ import (
 
 var _ config.Provider = (*Provider)(nil)
 
-func keyFactory(ctx context.Context, key config.Key) []string {
+func keyFactory(_ context.Context, key config.Key) []string {
 	return strings.Split(key.Name, "/")
 }
 
@@ -37,15 +37,15 @@ func New(yml []byte, opts ...Option) (*Provider, error) {
 }
 
 func create(opts ...Option) *Provider {
-	p := Provider{
+	prov := Provider{
 		key: keyFactory,
 	}
 
 	for _, opt := range opts {
-		opt(&p)
+		opt(&prov)
 	}
 
-	return &p
+	return &prov
 }
 
 type Option func(*Provider)
@@ -76,8 +76,8 @@ type node struct {
 	*yaml.Node
 }
 
-func (n *node) read(name string, k []string) (config.Variable, error) {
-	val, err := getData(n.Node.Content[0].Content, k)
+func (n *node) read(name string, keys []string) (config.Variable, error) {
+	val, err := getData(n.Node.Content[0].Content, keys)
 	if err != nil {
 		if errors.Is(err, config.ErrVariableNotFound) {
 			return config.Variable{}, fmt.Errorf("%w: %s", config.ErrVariableNotFound, name)
@@ -87,20 +87,20 @@ func (n *node) read(name string, k []string) (config.Variable, error) {
 	}
 
 	return config.Variable{
-		Name:     strings.Join(k, "."),
+		Name:     strings.Join(keys, "."),
 		Provider: name,
 		Value:    value.Decode(val),
 	}, nil
 }
 
 func getData(node []*yaml.Node, keys []string) (func(interface{}) error, error) {
-	for i := len(node) - 1; i > 0; i -= 2 {
-		if node[i-1].Value == keys[0] {
+	for idx := len(node) - 1; idx > 0; idx -= 2 {
+		if node[idx-1].Value == keys[0] {
 			if len(keys) > 1 {
-				return getData(node[i].Content, keys[1:])
+				return getData(node[idx].Content, keys[1:])
 			}
 
-			return node[i].Decode, nil
+			return node[idx].Decode, nil
 		}
 	}
 

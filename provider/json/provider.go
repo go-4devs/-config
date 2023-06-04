@@ -33,7 +33,7 @@ func NewFile(path string, opts ...Option) (*Provider, error) {
 		return nil, fmt.Errorf("%w: unable to read config file %#q: file not found or unreadable", err, path)
 	}
 
-	return New(file), nil
+	return New(file, opts...), nil
 }
 
 type Option func(*Provider)

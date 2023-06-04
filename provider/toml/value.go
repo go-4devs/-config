@@ -30,11 +30,11 @@ func (s Value) ParseInt() (int, error) {
 func (s Value) Unmarshal(target interface{}) error {
 	b, err := json.Marshal(s.Raw())
 	if err != nil {
-		return fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	if err := json.Unmarshal(b, target); err != nil {
-		return fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return nil
