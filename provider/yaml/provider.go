@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"gitoa.ru/go-4devs/config"
@@ -17,22 +18,34 @@ func keyFactory(ctx context.Context, key config.Key) []string {
 	return strings.Split(key.Name, "/")
 }
 
+func NewFile(name string, opts ...Option) (*Provider, error) {
+	in, err := ioutil.ReadFile(name)
+	if err != nil {
+		return nil, fmt.Errorf("yaml_file: read error: %w", err)
+	}
+
+	return New(in, opts...)
+}
+
 func New(yml []byte, opts ...Option) (*Provider, error) {
 	var data yaml.Node
 	if err := yaml.Unmarshal(yml, &data); err != nil {
 		return nil, fmt.Errorf("yaml: unmarshal err: %w", err)
 	}
 
+	return create(opts...).With(&data), nil
+}
+
+func create(opts ...Option) *Provider {
 	p := Provider{
-		key:  keyFactory,
-		data: node{Node: &data},
+		key: keyFactory,
 	}
 
 	for _, opt := range opts {
 		opt(&p)
 	}
 
-	return &p, nil
+	return &p
 }
 
 type Option func(*Provider)
@@ -50,6 +63,13 @@ func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, e
 	k := p.key(ctx, key)
 
 	return p.data.read(p.Name(), k)
+}
+
+func (p *Provider) With(data *yaml.Node) *Provider {
+	return &Provider{
+		key:  p.key,
+		data: node{Node: data},
+	}
 }
 
 type node struct {

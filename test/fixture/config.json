@@ -11,6 +11,7 @@
     },
     "cfg": {
         "duration": 1260000000000,
-        "enabled": true
+        "enabled": true,
+        "type":"json"
     }
 }
