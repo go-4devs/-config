@@ -12,7 +12,7 @@ import (
 func ParseDuration(raw string) (time.Duration, error) {
 	d, err := time.ParseDuration(raw)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return 0, fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return d, nil
@@ -21,7 +21,7 @@ func ParseDuration(raw string) (time.Duration, error) {
 func ParseInt(s string) (int64, error) {
 	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return 0, fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return i, nil
@@ -30,7 +30,7 @@ func ParseInt(s string) (int64, error) {
 func ParseUint(s string) (uint64, error) {
 	i, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return 0, fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return i, nil
@@ -39,7 +39,7 @@ func ParseUint(s string) (uint64, error) {
 func Atoi(s string) (int, error) {
 	i, err := strconv.Atoi(s)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return 0, fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return i, nil
@@ -48,7 +48,7 @@ func Atoi(s string) (int, error) {
 func ParseTime(s string) (time.Time, error) {
 	i, err := time.Parse(time.RFC3339, s)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return time.Time{}, fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return i, nil
@@ -57,7 +57,7 @@ func ParseTime(s string) (time.Time, error) {
 func ParseFloat(s string) (float64, error) {
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return 0, fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return f, nil
@@ -66,7 +66,7 @@ func ParseFloat(s string) (float64, error) {
 func ParseBool(s string) (bool, error) {
 	b, err := strconv.ParseBool(s)
 	if err != nil {
-		return false, fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return false, fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return b, nil
@@ -74,7 +74,7 @@ func ParseBool(s string) (bool, error) {
 
 func JUnmarshal(b []byte, v interface{}) error {
 	if err := json.Unmarshal(b, v); err != nil {
-		return fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return nil

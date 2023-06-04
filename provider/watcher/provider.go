@@ -15,7 +15,7 @@ var (
 )
 
 func New(duration time.Duration, provider config.Provider, opts ...Option) *Provider {
-	p := &Provider{
+	prov := &Provider{
 		Provider: provider,
 		ticker:   time.NewTicker(duration),
 		logger: func(_ context.Context, msg string) {
@@ -24,10 +24,10 @@ func New(duration time.Duration, provider config.Provider, opts ...Option) *Prov
 	}
 
 	for _, opt := range opts {
-		opt(p)
+		opt(prov)
 	}
 
-	return p
+	return prov
 }
 
 func WithLogger(l func(context.Context, string)) Option {

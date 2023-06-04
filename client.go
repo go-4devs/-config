@@ -49,17 +49,21 @@ type provider struct {
 	factory  func(ctx context.Context) (Provider, error)
 }
 
-func (p *provider) init(ctx context.Context) (err error) {
+func (p *provider) init(ctx context.Context) error {
 	if atomic.LoadUint32(&p.done) == 0 {
 		if !p.mu.TryLock() {
 			return fmt.Errorf("%w", ErrInitFactory)
 		}
 		defer atomic.StoreUint32(&p.done, 1)
 		defer p.mu.Unlock()
-		p.provider, err = p.factory(ctx)
+
+		var err error
+		if p.provider, err = p.factory(ctx); err != nil {
+			return fmt.Errorf("init provider factory:%w", err)
+		}
 	}
 
-	return err
+	return nil
 }
 
 func (p *provider) Watch(ctx context.Context, key Key, callback WatchCallback) error {
@@ -67,8 +71,13 @@ func (p *provider) Watch(ctx context.Context, key Key, callback WatchCallback) e
 		return fmt.Errorf("init read:%w", err)
 	}
 
-	if watch, ok := p.provider.(WatchProvider); ok {
-		return watch.Watch(ctx, key, callback)
+	watch, ok := p.provider.(WatchProvider)
+	if !ok {
+		return nil
+	}
+
+	if err := watch.Watch(ctx, key, callback); err != nil {
+		return fmt.Errorf("factory provider: %w", err)
 	}
 
 	return nil
@@ -79,7 +88,12 @@ func (p *provider) Read(ctx context.Context, key Key) (Variable, error) {
 		return Variable{}, fmt.Errorf("init read:%w", err)
 	}
 
-	return p.provider.Read(ctx, key)
+	variable, err := p.provider.Read(ctx, key)
+	if err != nil {
+		return Variable{}, fmt.Errorf("factory provider: %w", err)
+	}
+
+	return variable, nil
 }
 
 type Client struct {
@@ -96,10 +110,12 @@ func (c *Client) key(name string) Key {
 	}
 }
 
+// Value get value by name.
+// nolint: ireturn
 func (c *Client) Value(ctx context.Context, name string) (Value, error) {
 	variable, err := c.Variable(ctx, name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("variable:%w", err)
 	}
 
 	return variable.Value, nil

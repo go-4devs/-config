@@ -76,7 +76,7 @@ func (s Value) Unmarshal(target interface{}) error {
 	if v, ok := s.Raw().([]byte); ok {
 		err := json.Unmarshal(v, target)
 		if err != nil {
-			return fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+			return fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 		}
 
 		return nil

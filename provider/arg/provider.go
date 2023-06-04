@@ -21,15 +21,16 @@ func WithKeyFactory(factory config.KeyFactory) Option {
 }
 
 func New(opts ...Option) *Provider {
-	p := Provider{
-		key: key.Name,
+	prov := Provider{
+		key:  key.Name,
+		args: make(map[string][]string, len(os.Args[1:])),
 	}
 
 	for _, opt := range opts {
-		opt(&p)
+		opt(&prov)
 	}
 
-	return &p
+	return &prov
 }
 
 type Provider struct {
@@ -38,9 +39,10 @@ type Provider struct {
 }
 
 // nolint: cyclop
-func (p *Provider) parseOne(arg string) (name, val string, err error) {
+// return name, value, error.
+func (p *Provider) parseOne(arg string) (string, string, error) {
 	if arg[0] != '-' {
-		return
+		return "", "", nil
 	}
 
 	numMinuses := 1
@@ -49,19 +51,21 @@ func (p *Provider) parseOne(arg string) (name, val string, err error) {
 		numMinuses++
 	}
 
-	name = strings.TrimSpace(arg[numMinuses:])
+	name := strings.TrimSpace(arg[numMinuses:])
 	if len(name) == 0 {
-		return
+		return name, "", nil
 	}
 
 	if name[0] == '-' || name[0] == '=' {
 		return "", "", fmt.Errorf("%w: bad flag syntax: %s", config.ErrInvalidValue, arg)
 	}
 
-	for i := 1; i < len(name); i++ {
-		if name[i] == '=' || name[i] == ' ' {
-			val = strings.TrimSpace(name[i+1:])
-			name = name[0:i]
+	var val string
+
+	for idx := 1; idx < len(name); idx++ {
+		if name[idx] == '=' || name[idx] == ' ' {
+			val = strings.TrimSpace(name[idx+1:])
+			name = name[0:idx]
 
 			break
 		}
@@ -78,8 +82,6 @@ func (p *Provider) parse() error {
 	if len(p.args) > 0 {
 		return nil
 	}
-
-	p.args = make(map[string][]string, len(os.Args[1:]))
 
 	for _, arg := range os.Args[1:] {
 		name, value, err := p.parseOne(arg)
@@ -105,32 +107,36 @@ func (p *Provider) IsSupport(ctx context.Context, key config.Key) bool {
 
 func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
 	if err := p.parse(); err != nil {
-		return config.Variable{Provider: p.Name()}, err
+		return config.Variable{
+			Name:     "",
+			Value:    nil,
+			Provider: p.Name(),
+		}, err
 	}
 
-	k := p.key(ctx, key)
-	if val, ok := p.args[k]; ok {
+	name := p.key(ctx, key)
+	if val, ok := p.args[name]; ok {
 		switch {
 		case len(val) == 1:
 			return config.Variable{
-				Name:     k,
+				Name:     name,
 				Provider: p.Name(),
 				Value:    value.JString(val[0]),
 			}, nil
 		default:
-			var n yaml.Node
+			var yNode yaml.Node
 
-			if err := yaml.Unmarshal([]byte("["+strings.Join(val, ",")+"]"), &n); err != nil {
+			if err := yaml.Unmarshal([]byte("["+strings.Join(val, ",")+"]"), &yNode); err != nil {
 				return config.Variable{}, fmt.Errorf("arg: failed unmarshal yaml:%w", err)
 			}
 
 			return config.Variable{
-				Name:     k,
+				Name:     name,
 				Provider: p.Name(),
-				Value:    value.Decode(n.Decode),
+				Value:    value.Decode(yNode.Decode),
 			}, nil
 		}
 	}
 
-	return config.Variable{Name: k, Provider: p.Name()}, config.ErrVariableNotFound
+	return config.Variable{}, fmt.Errorf("%w: %s", config.ErrVariableNotFound, name)
 }

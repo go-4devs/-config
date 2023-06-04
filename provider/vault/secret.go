@@ -20,16 +20,16 @@ func WithSecretResolve(f func(context.Context, config.Key) (string, string)) Sec
 }
 
 func NewSecretKV2(client *api.Client, opts ...SecretOption) *SecretKV2 {
-	s := SecretKV2{
+	prov := SecretKV2{
 		client:  client,
 		resolve: key.LastIndexField(":", "value", key.PrefixName("secret/data/", key.NsAppName("/"))),
 	}
 
 	for _, opt := range opts {
-		opt(&s)
+		opt(&prov)
 	}
 
-	return &s
+	return &prov
 }
 
 type SecretKV2 struct {
@@ -50,26 +50,26 @@ func (p *SecretKV2) Name() string {
 func (p *SecretKV2) Read(ctx context.Context, key config.Key) (config.Variable, error) {
 	path, field := p.resolve(ctx, key)
 
-	s, err := p.client.Logical().Read(path)
+	secret, err := p.client.Logical().Read(path)
 	if err != nil {
 		return config.Variable{}, fmt.Errorf("%w: path:%s, field:%s, provider:%s", err, path, field, p.Name())
 	}
 
-	if s == nil || len(s.Data) == 0 {
+	if secret == nil || len(secret.Data) == 0 {
 		return config.Variable{}, fmt.Errorf("%w: path:%s, field:%s, provider:%s", config.ErrVariableNotFound, path, field, p.Name())
 	}
 
-	if len(s.Warnings) > 0 {
+	if len(secret.Warnings) > 0 {
 		return config.Variable{},
-			fmt.Errorf("%w: warn: %s, path:%s, field:%s, provider:%s", config.ErrVariableNotFound, s.Warnings, path, field, p.Name())
+			fmt.Errorf("%w: warn: %s, path:%s, field:%s, provider:%s", config.ErrVariableNotFound, secret.Warnings, path, field, p.Name())
 	}
 
-	d, ok := s.Data["data"].(map[string]interface{})
+	data, ok := secret.Data["data"].(map[string]interface{})
 	if !ok {
 		return config.Variable{}, fmt.Errorf("%w: path:%s, field:%s, provider:%s", config.ErrVariableNotFound, path, field, p.Name())
 	}
 
-	if val, ok := d[field]; ok {
+	if val, ok := data[field]; ok {
 		return config.Variable{
 			Name:     path + field,
 			Provider: p.Name(),
@@ -77,9 +77,9 @@ func (p *SecretKV2) Read(ctx context.Context, key config.Key) (config.Variable, 
 		}, nil
 	}
 
-	md, err := json.Marshal(d)
+	md, err := json.Marshal(data)
 	if err != nil {
-		return config.Variable{}, fmt.Errorf("%w: %s", config.ErrInvalidValue, err)
+		return config.Variable{}, fmt.Errorf("%w: %w", config.ErrInvalidValue, err)
 	}
 
 	return config.Variable{

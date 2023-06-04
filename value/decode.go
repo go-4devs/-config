@@ -1,3 +1,4 @@
+// nolint: nonamedreturns
 package value
 
 import (
