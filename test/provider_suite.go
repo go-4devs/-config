@@ -2,14 +2,12 @@ package test
 
 import (
 	"context"
-	"io/ioutil"
-	"path/filepath"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 	"gitoa.ru/go-4devs/config"
+	"gitoa.ru/go-4devs/config/test/require"
 )
 
 const (
@@ -21,17 +19,17 @@ const (
 func Run(t *testing.T, provider config.Provider, read []Read) {
 	t.Helper()
 
-	prov := &ProviderSuite{
-		provider: provider,
-		read:     read,
-	}
-	suite.Run(t, prov)
-}
+	ctx := context.Background()
 
-type ProviderSuite struct {
-	suite.Suite
-	provider config.Provider
-	read     []Read
+	for idx, read := range read {
+		t.Run(fmt.Sprintf("%v:%v", idx, read.Key), func(t *testing.T) {
+			val, err := provider.Value(ctx, read.Key...)
+			require.NoError(t, err, read.Key)
+			read.Assert(t, val)
+
+		})
+	}
+
 }
 
 type Read struct {
@@ -110,7 +108,7 @@ func NewRead(expected interface{}, key ...string) Read {
 				val, err = v.ParseTime()
 				short = v.Time()
 			default:
-				require.Fail(t, "unexpected type", "type:%+T", expected)
+				require.Fail(t, "unexpected type:%+T", expected)
 			}
 
 			require.Equalf(t, val, short, "type:%T", expected)
@@ -118,23 +116,4 @@ func NewRead(expected interface{}, key ...string) Read {
 			require.Equalf(t, expected, val, "type:%T", expected)
 		},
 	}
-}
-
-func (ps *ProviderSuite) TestReadKeys() {
-	ctx := context.Background()
-
-	for _, read := range ps.read {
-		val, err := ps.provider.Value(ctx, read.Key...)
-		require.NoError(ps.T(), err, read.Key)
-		read.Assert(ps.T(), val)
-	}
-}
-
-func LoadConfig(t *testing.T, path string) []byte {
-	t.Helper()
-
-	file, err := ioutil.ReadFile(filepath.Clean(path))
-	require.NoError(t, err)
-
-	return file
 }

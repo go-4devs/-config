@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"gitoa.ru/go-4devs/config"
+	"gitoa.ru/go-4devs/config/test/require"
 	"gitoa.ru/go-4devs/config/value"
 )
 
