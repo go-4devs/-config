@@ -45,7 +45,7 @@ func (p *Provider) Name() string {
 	return p.name
 }
 
-func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, error) {
+func (p *Provider) Value(_ context.Context, path ...string) (config.Value, error) {
 	name := p.prefix + p.key(path...)
 	if val, ok := os.LookupEnv(name); ok {
 		return value.JString(val), nil

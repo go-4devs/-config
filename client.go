@@ -124,7 +124,6 @@ func (c *Client) Value(ctx context.Context, path ...string) (Value, error) {
 }
 
 func (c *Client) Watch(ctx context.Context, callback WatchCallback, path ...string) error {
-
 	for idx, prov := range c.providers {
 		provider, ok := prov.(WatchProvider)
 		if !ok {

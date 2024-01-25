@@ -2,7 +2,7 @@ package watcher_test
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -13,6 +13,8 @@ import (
 	"gitoa.ru/go-4devs/config/test/require"
 	"gitoa.ru/go-4devs/config/value"
 )
+
+var _ config.Provider = (*provider)(nil)
 
 type provider struct {
 	cnt int32
@@ -25,7 +27,7 @@ func (p *provider) Name() string {
 func (p *provider) Value(context.Context, ...string) (config.Value, error) {
 	p.cnt++
 
-	return value.JString(fmt.Sprint(p.cnt)), nil
+	return value.JString(strconv.Itoa(int(p.cnt))), nil
 }
 
 func TestWatcher(t *testing.T) {
@@ -57,6 +59,7 @@ func TestWatcher(t *testing.T) {
 		},
 		"tmpname",
 	)
+
 	wg.Wait()
 
 	require.NoError(t, err)

@@ -106,7 +106,7 @@ func (p *Provider) Name() string {
 	return p.name
 }
 
-func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, error) {
+func (p *Provider) Value(_ context.Context, path ...string) (config.Value, error) {
 	if err := p.parse(); err != nil {
 		return nil, err
 	}
@@ -123,7 +123,11 @@ func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, err
 			}
 
 			return value.Decode(func(v interface{}) error {
-				return json.Unmarshal(data, v)
+				if err := json.Unmarshal(data, v); err != nil {
+					return fmt.Errorf("unmarshal:%w", err)
+				}
+
+				return nil
 			}), nil
 		}
 	}

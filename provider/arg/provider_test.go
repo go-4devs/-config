@@ -58,6 +58,7 @@ func (d *Duration) UnmarshalJSON(in []byte) error {
 	if err != nil {
 		return fmt.Errorf("parse:%w", err)
 	}
+
 	d.Duration = o
 
 	return nil

@@ -67,7 +67,6 @@ func (p *Provider) Watch(ctx context.Context, callback config.WatchCallback, key
 							return
 						}
 						p.logger(ctx, "callback %v:%v", key, err)
-
 					}
 					oldVar = newVar
 				}

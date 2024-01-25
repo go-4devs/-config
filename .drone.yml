@@ -10,7 +10,8 @@ steps:
 - name: test 
   image: golang
   commands:
-  - go test -parallel 10 -race ./... 
+  # - go test -parallel 10 -race ./... 
+  - go test -race ./... 
 
 - name: golangci-lint
   image: golangci/golangci-lint:v1.53

@@ -26,10 +26,8 @@ func Run(t *testing.T, provider config.Provider, read []Read) {
 			val, err := provider.Value(ctx, read.Key...)
 			require.NoError(t, err, read.Key)
 			read.Assert(t, val)
-
 		})
 	}
-
 }
 
 type Read struct {
