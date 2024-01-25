@@ -24,6 +24,13 @@ linters-settings:
       locale: US  
     varnamelen:
       min-name-length: 2
+      ignore-decls:
+        - w io.Writer
+        - t testing.T
+        - e error
+        - i int
+        - b bytes.Buffer
+        - h Handle
 
 linters:
     enable-all: true
