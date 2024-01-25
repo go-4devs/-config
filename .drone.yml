@@ -52,3 +52,23 @@ steps:
   commands:
   - cd provider/yaml
   - golangci-lint run
+
+---
+kind: pipeline
+type: docker
+name: ini
+
+steps:
+- name: test 
+  image: golang
+  failure: ignore # runtime/cgo: pthread_create failed: Operation not permitted
+  commands:
+  - cd provider/ini
+  - go test ./... 
+
+- name: golangci-lint
+  image: golangci/golangci-lint:v1.55
+  commands:
+  - cd provider/ini
+  - golangci-lint run
+
