@@ -13,7 +13,6 @@ import (
 	"gitoa.ru/go-4devs/config/provider/env"
 	"gitoa.ru/go-4devs/config/provider/etcd"
 	"gitoa.ru/go-4devs/config/provider/json"
-	"gitoa.ru/go-4devs/config/provider/vault"
 	"gitoa.ru/go-4devs/config/provider/watcher"
 	"gitoa.ru/go-4devs/config/provider/yaml"
 	"gitoa.ru/go-4devs/config/test"
@@ -45,14 +44,6 @@ func ExampleClient_Value() {
 		return
 	}
 
-	// configure vault client
-	vaultClient, err := test.NewVault()
-	if err != nil {
-		log.Print(err)
-
-		return
-	}
-
 	// read json config
 	jsonConfig := test.ReadFile("config.json")
 
@@ -60,18 +51,10 @@ func ExampleClient_Value() {
 		arg.New(),
 		env.New(test.Namespace, test.AppName),
 		etcd.NewProvider(namespace, appName, etcdClient),
-		vault.NewSecretKV2(namespace, appName, vaultClient),
 		json.New(jsonConfig),
 	)
 	if err != nil {
 		log.Print(err)
-
-		return
-	}
-
-	dsn, err := config.Value(ctx, "example", "dsn")
-	if err != nil {
-		log.Print("example:dsn", err)
 
 		return
 	}
@@ -114,14 +97,12 @@ func ExampleClient_Value() {
 	cfg := test.Config{}
 	_ = cfgValue.Unmarshal(&cfg)
 
-	fmt.Printf("dsn from vault: %s\n", dsn.String())
 	fmt.Printf("listen from env: %d\n", port.Int())
 	fmt.Printf("maintain from etcd: %v\n", enabled.Bool())
 	fmt.Printf("title from json: %v\n", title.String())
 	fmt.Printf("struct from json: %+v\n", cfg)
 	fmt.Printf("replace env host by args: %v\n", hostValue.String())
 	// Output:
-	// dsn from vault: pgsql://user@pass:127.0.0.1:5432
 	// listen from env: 8080
 	// maintain from etcd: true
 	// title from json: config title
