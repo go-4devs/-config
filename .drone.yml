@@ -145,3 +145,21 @@ steps:
   - cd provider/vault
   - golangci-lint run
 
+---
+kind: pipeline
+type: docker
+name: definition
+
+steps:
+- name: test 
+  image: golang
+  commands:
+  - cd definition
+  - go test ./... 
+
+- name: golangci-lint
+  image: golangci/golangci-lint:v1.55
+  commands:
+  - cd definition
+  - golangci-lint run
+
