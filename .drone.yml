@@ -1,3 +1,4 @@
+---
 kind: pipeline
 name: default
 
@@ -11,10 +12,26 @@ steps:
   image: golang
   commands:
   # - go test -parallel 10 -race ./... 
-  # - go test -race ./... 
   - go test ./... 
 
 - name: golangci-lint
   image: golangci/golangci-lint:v1.55
   commands:
+  - golangci-lint run
+
+---
+kind: pipeline
+name: json
+
+steps:
+- name: test 
+  image: golang
+  commands:
+  - cd provider/json
+  - go test ./... 
+
+- name: golangci-lint
+  image: golangci/golangci-lint:v1.55
+  commands:
+  - cd provider/json
   - golangci-lint run
