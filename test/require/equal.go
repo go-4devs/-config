@@ -1,25 +1,25 @@
 package require
 
 import (
-	"reflect"
 	"testing"
+
+	"gitoa.ru/go-4devs/config/test/assert"
 )
 
 func Equal(t *testing.T, expected interface{}, actual interface{}, msgAndArgs ...interface{}) {
 	t.Helper()
 
-	if reflect.DeepEqual(expected, actual) {
+	if assert.Equal(t, expected, actual, msgAndArgs...) {
 		return
 	}
 
-	t.Error(msgAndArgs...)
 	t.FailNow()
 }
 
 func Equalf(t *testing.T, expected interface{}, actual interface{}, msg string, args ...interface{}) {
 	t.Helper()
 
-	if reflect.DeepEqual(expected, actual) {
+	if assert.Equalf(t, expected, actual, msg, args...) {
 		return
 	}
 
