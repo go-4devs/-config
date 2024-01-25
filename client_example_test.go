@@ -11,7 +11,6 @@ import (
 	"gitoa.ru/go-4devs/config"
 	"gitoa.ru/go-4devs/config/provider/arg"
 	"gitoa.ru/go-4devs/config/provider/env"
-	"gitoa.ru/go-4devs/config/provider/etcd"
 	"gitoa.ru/go-4devs/config/provider/json"
 	"gitoa.ru/go-4devs/config/provider/watcher"
 	"gitoa.ru/go-4devs/config/provider/yaml"
@@ -36,21 +35,12 @@ func ExampleClient_Value() {
 
 	os.Args = []string{"main.go", "--host=gitoa.ru"}
 
-	// configure etcd client
-	etcdClient, err := test.NewEtcd(ctx)
-	if err != nil {
-		log.Print(err)
-
-		return
-	}
-
 	// read json config
 	jsonConfig := test.ReadFile("config.json")
 
 	config, err := config.New(
 		arg.New(),
 		env.New(test.Namespace, test.AppName),
-		etcd.NewProvider(namespace, appName, etcdClient),
 		json.New(jsonConfig),
 	)
 	if err != nil {
@@ -66,13 +56,6 @@ func ExampleClient_Value() {
 		return
 	}
 
-	enabled, err := config.Value(ctx, "maintain")
-	if err != nil {
-		log.Print("maintain", err)
-
-		return
-	}
-
 	title, err := config.Value(ctx, "app.name.title")
 	if err != nil {
 		log.Print("app.name.title", err)
@@ -82,14 +65,14 @@ func ExampleClient_Value() {
 
 	cfgValue, err := config.Value(ctx, "cfg")
 	if err != nil {
-		log.Print(err)
+		log.Print("cfg ", err)
 
 		return
 	}
 
 	hostValue, err := config.Value(ctx, "host")
 	if err != nil {
-		log.Print(err)
+		log.Print("host ", err)
 
 		return
 	}
@@ -98,58 +81,25 @@ func ExampleClient_Value() {
 	_ = cfgValue.Unmarshal(&cfg)
 
 	fmt.Printf("listen from env: %d\n", port.Int())
-	fmt.Printf("maintain from etcd: %v\n", enabled.Bool())
 	fmt.Printf("title from json: %v\n", title.String())
 	fmt.Printf("struct from json: %+v\n", cfg)
 	fmt.Printf("replace env host by args: %v\n", hostValue.String())
 	// Output:
 	// listen from env: 8080
-	// maintain from etcd: true
 	// title from json: config title
 	// struct from json: {Duration:21m0s Enabled:true}
 	// replace env host by args: gitoa.ru
 }
 
 func ExampleClient_Watch() {
-	const (
-		namespace = "fdevs"
-		appName   = "config"
-	)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// configure etcd client
-	etcdClient, err := test.NewEtcd(ctx)
-	if err != nil {
-		log.Print(err)
-
-		return
-	}
-
 	_ = os.Setenv("FDEVS_CONFIG_EXAMPLE_ENABLE", "true")
-
-	_, err = etcdClient.KV.Put(ctx, "fdevs/config/example_db_dsn", "pgsql://user@pass:127.0.0.1:5432")
-	if err != nil {
-		log.Print(err)
-
-		return
-	}
-
-	defer func() {
-		cancel()
-
-		if _, err = etcdClient.KV.Delete(context.Background(), "fdevs/config/example_db_dsn"); err != nil {
-			log.Print(err)
-
-			return
-		}
-	}()
 
 	watcher, err := config.New(
 		watcher.New(time.Microsecond, env.New(test.Namespace, test.AppName)),
 		watcher.New(time.Microsecond, yaml.NewWatch("test/fixture/config.yaml")),
-		etcd.NewProvider(namespace, appName, etcdClient),
 	)
 	if err != nil {
 		log.Print(err)
@@ -158,7 +108,7 @@ func ExampleClient_Watch() {
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(1)
 
 	err = watcher.Watch(ctx, func(ctx context.Context, oldVar, newVar config.Value) {
 		fmt.Println("update example_enable old: ", oldVar.Bool(), " new:", newVar.Bool())
@@ -182,19 +132,10 @@ func ExampleClient_Watch() {
 		return
 	}
 
-	time.AfterFunc(time.Second, func() {
-		if _, err := etcdClient.KV.Put(ctx, "fdevs/config/example_db_dsn", "mysql://localhost:5432"); err != nil {
-			log.Print(err)
-
-			return
-		}
-	})
-
 	wg.Wait()
 
 	// Output:
 	// update example_enable old:  true  new: false
-	// update example_db_dsn old:  pgsql://user@pass:127.0.0.1:5432  new: mysql://localhost:5432
 }
 
 func ExampleClient_Value_factory() {
