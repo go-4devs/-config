@@ -3,20 +3,27 @@ package json
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/tidwall/gjson"
 	"gitoa.ru/go-4devs/config"
-	"gitoa.ru/go-4devs/config/key"
 	"gitoa.ru/go-4devs/config/value"
+)
+
+const (
+	Name      = "json"
+	Separator = "."
 )
 
 var _ config.Provider = (*Provider)(nil)
 
 func New(json []byte, opts ...Option) *Provider {
 	provider := Provider{
-		key:  key.Name,
+		key: func(s ...string) string {
+			return strings.Join(s, Separator)
+		},
 		data: json,
 	}
 
@@ -28,7 +35,7 @@ func New(json []byte, opts ...Option) *Provider {
 }
 
 func NewFile(path string, opts ...Option) (*Provider, error) {
-	file, err := ioutil.ReadFile(filepath.Clean(path))
+	file, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, fmt.Errorf("%w: unable to read config file %#q: file not found or unreadable", err, path)
 	}
@@ -40,27 +47,19 @@ type Option func(*Provider)
 
 type Provider struct {
 	data []byte
-	key  config.KeyFactory
-}
-
-func (p *Provider) IsSupport(ctx context.Context, key config.Key) bool {
-	return p.key(ctx, key) != ""
+	key  func(...string) string
+	name string
 }
 
 func (p *Provider) Name() string {
-	return "json"
+	return p.name
 }
 
-func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
-	path := p.key(ctx, key)
-
-	if val := gjson.GetBytes(p.data, path); val.Exists() {
-		return config.Variable{
-			Name:     path,
-			Provider: p.Name(),
-			Value:    value.JString(val.String()),
-		}, nil
+func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, error) {
+	key := p.key(path...)
+	if val := gjson.GetBytes(p.data, key); val.Exists() {
+		return value.JString(val.String()), nil
 	}
 
-	return config.Variable{}, config.ErrVariableNotFound
+	return nil, fmt.Errorf("%v:%w", p.Name(), config.ErrValueNotFound)
 }

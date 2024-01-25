@@ -20,6 +20,11 @@ import (
 )
 
 func ExampleClient_Value() {
+	const (
+		namespace = "fdevs"
+		appName   = "config"
+	)
+
 	ctx := context.Background()
 	_ = os.Setenv("FDEVS_CONFIG_LISTEN", "8080")
 	_ = os.Setenv("FDEVS_CONFIG_HOST", "localhost")
@@ -51,11 +56,11 @@ func ExampleClient_Value() {
 	// read json config
 	jsonConfig := test.ReadFile("config.json")
 
-	config, err := config.New(test.Namespace, test.AppName,
+	config, err := config.New(
 		arg.New(),
-		env.New(),
-		etcd.NewProvider(etcdClient),
-		vault.NewSecretKV2(vaultClient),
+		env.New(test.Namespace, test.AppName),
+		etcd.NewProvider(namespace, appName, etcdClient),
+		vault.NewSecretKV2(namespace, appName, vaultClient),
 		json.New(jsonConfig),
 	)
 	if err != nil {
@@ -64,30 +69,30 @@ func ExampleClient_Value() {
 		return
 	}
 
-	dsn, err := config.Value(ctx, "example:dsn")
+	dsn, err := config.Value(ctx, "example", "dsn")
 	if err != nil {
-		log.Print(err)
+		log.Print("example:dsn", err)
 
 		return
 	}
 
 	port, err := config.Value(ctx, "listen")
 	if err != nil {
-		log.Print(err)
+		log.Print("listen", err)
 
 		return
 	}
 
 	enabled, err := config.Value(ctx, "maintain")
 	if err != nil {
-		log.Print(err)
+		log.Print("maintain", err)
 
 		return
 	}
 
 	title, err := config.Value(ctx, "app.name.title")
 	if err != nil {
-		log.Print(err)
+		log.Print("app.name.title", err)
 
 		return
 	}
@@ -125,6 +130,11 @@ func ExampleClient_Value() {
 }
 
 func ExampleClient_Watch() {
+	const (
+		namespace = "fdevs"
+		appName   = "config"
+	)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -155,10 +165,10 @@ func ExampleClient_Watch() {
 		}
 	}()
 
-	watcher, err := config.New(test.Namespace, test.AppName,
-		watcher.New(time.Microsecond, env.New()),
+	watcher, err := config.New(
+		watcher.New(time.Microsecond, env.New(test.Namespace, test.AppName)),
 		watcher.New(time.Microsecond, yaml.NewWatch("test/fixture/config.yaml")),
-		etcd.NewProvider(etcdClient),
+		etcd.NewProvider(namespace, appName, etcdClient),
 	)
 	if err != nil {
 		log.Print(err)
@@ -169,10 +179,10 @@ func ExampleClient_Watch() {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	err = watcher.Watch(ctx, "example_enable", func(ctx context.Context, oldVar, newVar config.Variable) {
-		fmt.Println("update ", oldVar.Provider, " variable:", oldVar.Name, ", old: ", oldVar.Value.Bool(), " new:", newVar.Value.Bool())
+	err = watcher.Watch(ctx, func(ctx context.Context, oldVar, newVar config.Value) {
+		fmt.Println("update example_enable old: ", oldVar.Bool(), " new:", newVar.Bool())
 		wg.Done()
-	})
+	}, "example_enable")
 	if err != nil {
 		log.Print(err)
 
@@ -181,10 +191,10 @@ func ExampleClient_Watch() {
 
 	_ = os.Setenv("FDEVS_CONFIG_EXAMPLE_ENABLE", "false")
 
-	err = watcher.Watch(ctx, "example_db_dsn", func(ctx context.Context, oldVar, newVar config.Variable) {
-		fmt.Println("update ", oldVar.Provider, " variable:", oldVar.Name, ", old: ", oldVar.Value.String(), " new:", newVar.Value.String())
+	err = watcher.Watch(ctx, func(ctx context.Context, oldVar, newVar config.Value) {
+		fmt.Println("update example_db_dsn old: ", oldVar.String(), " new:", newVar.String())
 		wg.Done()
-	})
+	}, "example_db_dsn")
 	if err != nil {
 		log.Print(err)
 
@@ -202,8 +212,8 @@ func ExampleClient_Watch() {
 	wg.Wait()
 
 	// Output:
-	// update  env  variable: FDEVS_CONFIG_EXAMPLE_ENABLE , old:  true  new: false
-	// update  etcd  variable: fdevs/config/example_db_dsn , old:  pgsql://user@pass:127.0.0.1:5432  new: mysql://localhost:5432
+	// update example_enable old:  true  new: false
+	// update example_db_dsn old:  pgsql://user@pass:127.0.0.1:5432  new: mysql://localhost:5432
 }
 
 func ExampleClient_Value_factory() {
@@ -219,10 +229,10 @@ func ExampleClient_Value_factory() {
 
 	os.Args = []string{"main.go", "--config-json=config.json", "--config-yaml=test/fixture/config.yaml"}
 
-	config, err := config.New(test.Namespace, test.AppName,
+	config, err := config.New(
 		arg.New(),
-		env.New(),
-		config.Factory(func(ctx context.Context, cfg config.ReadConfig) (config.Provider, error) {
+		env.New(test.Namespace, test.AppName),
+		config.Factory(func(ctx context.Context, cfg config.Provider) (config.Provider, error) {
 			val, err := cfg.Value(ctx, "config-json")
 			if err != nil {
 				return nil, fmt.Errorf("failed read config file:%w", err)
@@ -231,7 +241,7 @@ func ExampleClient_Value_factory() {
 
 			return json.New(jsonConfig), nil
 		}),
-		config.Factory(func(ctx context.Context, cfg config.ReadConfig) (config.Provider, error) {
+		config.Factory(func(ctx context.Context, cfg config.Provider) (config.Provider, error) {
 			val, err := cfg.Value(ctx, "config-yaml")
 			if err != nil {
 				return nil, fmt.Errorf("failed read config file:%w", err)
@@ -258,14 +268,14 @@ func ExampleClient_Value_factory() {
 		return
 	}
 
-	title, err := config.Value(ctx, "app.name.title")
+	title, err := config.Value(ctx, "app", "name", "title")
 	if err != nil {
 		log.Print(err)
 
 		return
 	}
 
-	yamlTitle, err := config.Value(ctx, "app/title")
+	yamlTitle, err := config.Value(ctx, "app", "title")
 	if err != nil {
 		log.Print(err)
 

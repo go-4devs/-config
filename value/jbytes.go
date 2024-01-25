@@ -110,3 +110,7 @@ func (s JBytes) Time() time.Time {
 
 	return in
 }
+
+func (s JBytes) IsEquals(in config.Value) bool {
+	return s.String() == in.String()
+}

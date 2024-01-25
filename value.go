@@ -8,6 +8,7 @@ type Value interface {
 	ReadValue
 	ParseValue
 	UnmarshalValue
+	IsEquals(Value) bool
 }
 
 type UnmarshalValue interface {

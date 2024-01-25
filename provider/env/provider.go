@@ -2,27 +2,30 @@ package env
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
 	"gitoa.ru/go-4devs/config"
-	"gitoa.ru/go-4devs/config/key"
 	"gitoa.ru/go-4devs/config/value"
 )
+
+const Name = "env"
 
 var _ config.Provider = (*Provider)(nil)
 
 type Option func(*Provider)
 
-func WithKeyFactory(factory config.KeyFactory) Option {
+func WithKeyFactory(factory func(...string) string) Option {
 	return func(p *Provider) { p.key = factory }
 }
 
-func New(opts ...Option) *Provider {
+func New(namespace, appName string, opts ...Option) *Provider {
 	provider := Provider{
-		key: func(ctx context.Context, k config.Key) string {
-			return strings.ToUpper(key.NsAppName("_")(ctx, k))
+		key: func(path ...string) string {
+			return strings.ToUpper(strings.Join(path, "_"))
 		},
+		prefix: strings.ToUpper(namespace + "_" + appName + "_"),
 	}
 
 	for _, opt := range opts {
@@ -33,26 +36,20 @@ func New(opts ...Option) *Provider {
 }
 
 type Provider struct {
-	key config.KeyFactory
+	key    func(...string) string
+	name   string
+	prefix string
 }
 
 func (p *Provider) Name() string {
-	return "env"
+	return p.name
 }
 
-func (p *Provider) IsSupport(ctx context.Context, key config.Key) bool {
-	return p.key(ctx, key) != ""
-}
-
-func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
-	name := p.key(ctx, key)
+func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, error) {
+	name := p.prefix + p.key(path...)
 	if val, ok := os.LookupEnv(name); ok {
-		return config.Variable{
-			Name:     name,
-			Provider: p.Name(),
-			Value:    value.JString(val),
-		}, nil
+		return value.JString(val), nil
 	}
 
-	return config.Variable{}, config.ErrVariableNotFound
+	return nil, fmt.Errorf("%v:%w", p.Name(), config.ErrValueNotFound)
 }

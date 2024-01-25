@@ -31,15 +31,15 @@ func TestProvider(t *testing.T) {
 		"--end-after=2008-01-02T15:04:05+03:00",
 	}
 	read := []test.Read{
-		test.NewRead("listen", 8080),
-		test.NewRead("config", "config.hcl"),
-		test.NewRead("start-at", test.Time("2010-01-02T15:04:05Z")),
-		test.NewReadUnmarshal("url", &[]string{"http://4devs.io", "https://4devs.io"}, &[]string{}),
-		test.NewReadUnmarshal("timeout", &[]time.Duration{time.Minute, time.Hour}, &[]time.Duration{}),
-		test.NewReadUnmarshal("end-after", &[]time.Time{
+		test.NewRead(8080, "listen"),
+		test.NewRead("config.hcl", "config"),
+		test.NewRead(test.Time("2010-01-02T15:04:05Z"), "start-at"),
+		test.NewReadUnmarshal(&[]string{"http://4devs.io", "https://4devs.io"}, &[]string{}, "url"),
+		test.NewReadUnmarshal(&[]time.Duration{time.Minute, time.Hour}, &[]time.Duration{}, "timeout"),
+		test.NewReadUnmarshal(&[]time.Time{
 			test.Time("2009-01-02T15:04:05Z"),
 			test.Time("2008-01-02T15:04:05+03:00"),
-		}, &[]time.Time{}),
+		}, &[]time.Time{}, "end-after"),
 	}
 
 	prov := arg.New()

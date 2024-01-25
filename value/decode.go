@@ -108,3 +108,7 @@ func (s Decode) Time() time.Time {
 
 	return in
 }
+
+func (s Decode) IsEquals(in config.Value) bool {
+	return s.String() == in.String()
+}

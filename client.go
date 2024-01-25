@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 )
 
-func Must(namespace, appName string, providers ...interface{}) *Client {
-	client, err := New(namespace, appName, providers...)
+func Must(providers ...interface{}) *Client {
+	client, err := New(providers...)
 	if err != nil {
 		panic(err)
 	}
@@ -17,10 +17,8 @@ func Must(namespace, appName string, providers ...interface{}) *Client {
 	return client
 }
 
-func New(namespace, appName string, providers ...interface{}) (*Client, error) {
+func New(providers ...interface{}) (*Client, error) {
 	client := &Client{
-		namespace: namespace,
-		appName:   appName,
 		providers: make([]Provider, len(providers)),
 	}
 
@@ -66,7 +64,7 @@ func (p *provider) init(ctx context.Context) error {
 	return nil
 }
 
-func (p *provider) Watch(ctx context.Context, key Key, callback WatchCallback) error {
+func (p *provider) Watch(ctx context.Context, callback WatchCallback, path ...string) error {
 	if err := p.init(ctx); err != nil {
 		return fmt.Errorf("init read:%w", err)
 	}
@@ -76,21 +74,21 @@ func (p *provider) Watch(ctx context.Context, key Key, callback WatchCallback) e
 		return nil
 	}
 
-	if err := watch.Watch(ctx, key, callback); err != nil {
+	if err := watch.Watch(ctx, callback, path...); err != nil {
 		return fmt.Errorf("factory provider: %w", err)
 	}
 
 	return nil
 }
 
-func (p *provider) Read(ctx context.Context, key Key) (Variable, error) {
+func (p *provider) Value(ctx context.Context, path ...string) (Value, error) {
 	if err := p.init(ctx); err != nil {
-		return Variable{}, fmt.Errorf("init read:%w", err)
+		return nil, fmt.Errorf("init read:%w", err)
 	}
 
-	variable, err := p.provider.Read(ctx, key)
+	variable, err := p.provider.Value(ctx, path...)
 	if err != nil {
-		return Variable{}, fmt.Errorf("factory provider: %w", err)
+		return nil, fmt.Errorf("factory provider: %w", err)
 	}
 
 	return variable, nil
@@ -98,53 +96,34 @@ func (p *provider) Read(ctx context.Context, key Key) (Variable, error) {
 
 type Client struct {
 	providers []Provider
-	appName   string
-	namespace string
 }
 
-func (c *Client) key(name string) Key {
-	return Key{
-		Name:      name,
-		AppName:   c.appName,
-		Namespace: c.namespace,
-	}
+func (c *Client) Name() string {
+	return "client"
 }
 
 // Value get value by name.
-// nolint: ireturn
-func (c *Client) Value(ctx context.Context, name string) (Value, error) {
-	variable, err := c.Variable(ctx, name)
-	if err != nil {
-		return nil, fmt.Errorf("variable:%w", err)
-	}
-
-	return variable.Value, nil
-}
-
-func (c *Client) Variable(ctx context.Context, name string) (Variable, error) {
+func (c *Client) Value(ctx context.Context, path ...string) (Value, error) {
 	var (
-		variable Variable
-		err      error
+		value Value
+		err   error
 	)
 
-	key := c.key(name)
-
 	for _, provider := range c.providers {
-		variable, err = provider.Read(ctx, key)
-		if err == nil || !(errors.Is(err, ErrVariableNotFound) || errors.Is(err, ErrInitFactory)) {
+		value, err = provider.Value(ctx, path...)
+		if err == nil || !(errors.Is(err, ErrValueNotFound) || errors.Is(err, ErrInitFactory)) {
 			break
 		}
 	}
 
 	if err != nil {
-		return variable, fmt.Errorf("client failed get variable: %w", err)
+		return value, fmt.Errorf("client failed get value: %w", err)
 	}
 
-	return variable, nil
+	return value, nil
 }
 
-func (c *Client) Watch(ctx context.Context, name string, callback WatchCallback) error {
-	key := c.key(name)
+func (c *Client) Watch(ctx context.Context, callback WatchCallback, path ...string) error {
 
 	for idx, prov := range c.providers {
 		provider, ok := prov.(WatchProvider)
@@ -152,9 +131,9 @@ func (c *Client) Watch(ctx context.Context, name string, callback WatchCallback)
 			continue
 		}
 
-		err := provider.Watch(ctx, key, callback)
+		err := provider.Watch(ctx, callback, path...)
 		if err != nil {
-			if errors.Is(err, ErrVariableNotFound) || errors.Is(err, ErrInitFactory) {
+			if errors.Is(err, ErrValueNotFound) || errors.Is(err, ErrInitFactory) {
 				continue
 			}
 

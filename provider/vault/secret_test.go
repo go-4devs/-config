@@ -15,12 +15,12 @@ func TestProvider(t *testing.T) {
 	cl, err := test.NewVault()
 	require.NoError(t, err)
 
-	provider := vault.NewSecretKV2(cl)
+	provider := vault.NewSecretKV2("fdevs", "config", cl)
 
 	read := []test.Read{
 		test.NewReadConfig("database"),
-		test.NewRead("db:dsn", test.DSN),
-		test.NewRead("db:timeout", time.Minute),
+		test.NewRead(test.DSN, "db", "dsn"),
+		test.NewRead(time.Minute, "db", "timeout"),
 	}
 	test.Run(t, provider, read)
 }

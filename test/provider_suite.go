@@ -35,7 +35,7 @@ type ProviderSuite struct {
 }
 
 type Read struct {
-	Key    config.Key
+	Key    []string
 	Assert func(t *testing.T, v config.Value)
 }
 
@@ -46,22 +46,18 @@ type Config struct {
 	Enabled  bool
 }
 
-func NewReadConfig(key string) Read {
+func NewReadConfig(key ...string) Read {
 	ex := &Config{
 		Duration: 21 * time.Minute,
 		Enabled:  true,
 	}
 
-	return NewReadUnmarshal(key, ex, &Config{})
+	return NewReadUnmarshal(ex, &Config{}, key...)
 }
 
-func NewReadUnmarshal(key string, expected, target interface{}) Read {
+func NewReadUnmarshal(expected, target interface{}, key ...string) Read {
 	return Read{
-		Key: config.Key{
-			Namespace: "fdevs",
-			AppName:   "config",
-			Name:      key,
-		},
+		Key: key,
 		Assert: func(t *testing.T, v config.Value) {
 			t.Helper()
 			require.NoErrorf(t, v.Unmarshal(target), "unmarshal")
@@ -77,13 +73,9 @@ func Time(value string) time.Time {
 }
 
 // nolint: cyclop
-func NewRead(key string, expected interface{}) Read {
+func NewRead(expected interface{}, key ...string) Read {
 	return Read{
-		Key: config.Key{
-			Namespace: "fdevs",
-			AppName:   "config",
-			Name:      key,
-		},
+		Key: key,
 		Assert: func(t *testing.T, v config.Value) {
 			t.Helper()
 			var (
@@ -134,9 +126,9 @@ func (ps *ProviderSuite) TestReadKeys() {
 	ctx := context.Background()
 
 	for _, read := range ps.read {
-		val, err := ps.provider.Read(ctx, read.Key)
-		require.NoError(ps.T(), err, read.Key.String())
-		read.Assert(ps.T(), val.Value)
+		val, err := ps.provider.Value(ctx, read.Key...)
+		require.NoError(ps.T(), err, read.Key)
+		read.Assert(ps.T(), val)
 	}
 }
 

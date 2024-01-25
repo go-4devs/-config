@@ -22,14 +22,10 @@ func (p *provider) Name() string {
 	return "test"
 }
 
-func (p *provider) Read(context.Context, config.Key) (config.Variable, error) {
+func (p *provider) Value(context.Context, ...string) (config.Value, error) {
 	p.cnt++
 
-	return config.Variable{
-		Name:     "tmpname",
-		Provider: p.Name(),
-		Value:    value.JString(fmt.Sprint(p.cnt)),
-	}, nil
+	return value.JString(fmt.Sprint(p.cnt)), nil
 }
 
 func TestWatcher(t *testing.T) {
@@ -46,11 +42,11 @@ func TestWatcher(t *testing.T) {
 
 	err := w.Watch(
 		ctx,
-		config.Key{Name: "tmpname"},
-		func(ctx context.Context, oldVar, newVar config.Variable) {
+		func(ctx context.Context, oldVar, newVar config.Value) {
 			atomic.AddInt32(&cnt, 1)
 			wg.Done()
 		},
+		"tmpname",
 	)
 	require.NoError(t, err)
 	wg.Wait()

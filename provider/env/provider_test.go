@@ -14,11 +14,11 @@ func TestProvider(t *testing.T) {
 	os.Setenv("FDEVS_CONFIG_DSN", test.DSN)
 	os.Setenv("FDEVS_CONFIG_PORT", "8080")
 
-	provider := env.New()
+	provider := env.New("fdevs", "config")
 
 	read := []test.Read{
-		test.NewRead("dsn", test.DSN),
-		test.NewRead("port", 8080),
+		test.NewRead(test.DSN, "dsn"),
+		test.NewRead(8080, "port"),
 	}
 	test.Run(t, provider, read)
 }
