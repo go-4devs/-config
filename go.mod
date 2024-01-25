@@ -2,10 +2,7 @@ module gitoa.ru/go-4devs/config
 
 go 1.18
 
-require (
-	github.com/iancoleman/strcase v0.3.0
-	github.com/stretchr/testify v1.7.0
-)
+require github.com/stretchr/testify v1.7.0
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
