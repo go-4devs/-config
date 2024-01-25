@@ -72,3 +72,22 @@ steps:
   - cd provider/ini
   - golangci-lint run
 
+
+---
+kind: pipeline
+type: docker
+name: toml
+
+steps:
+- name: test 
+  image: golang
+  commands:
+  - cd provider/toml
+  - go test ./... 
+
+- name: golangci-lint
+  image: golangci/golangci-lint:v1.55
+  commands:
+  - cd provider/toml
+  - golangci-lint run
+
