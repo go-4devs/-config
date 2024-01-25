@@ -39,8 +39,6 @@ type Read struct {
 	Assert func(t *testing.T, v config.Value)
 }
 
-const ConfigJSON = `{"duration":1260000000000,"enabled":true}`
-
 type Config struct {
 	Duration time.Duration
 	Enabled  bool

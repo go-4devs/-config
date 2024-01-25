@@ -2,13 +2,14 @@ package arg
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
 	"gitoa.ru/go-4devs/config"
 	"gitoa.ru/go-4devs/config/value"
-	"gopkg.in/yaml.v3"
 )
 
 const Name = "arg"
@@ -117,13 +118,15 @@ func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, err
 		case len(val) == 1:
 			return value.JString(val[0]), nil
 		default:
-			var yNode yaml.Node
-
-			if err := yaml.Unmarshal([]byte("["+strings.Join(val, ",")+"]"), &yNode); err != nil {
-				return nil, fmt.Errorf("arg: failed unmarshal yaml:%w", err)
+			data, jerr := json.Marshal(val)
+			if jerr != nil {
+				return nil, fmt.Errorf("failed load data:%w", jerr)
 			}
 
-			return value.Decode(yNode.Decode), nil
+			return value.Decode(func(v interface{}) error {
+				log.Println(string(data))
+				return json.Unmarshal(data, v)
+			}), nil
 		}
 	}
 
