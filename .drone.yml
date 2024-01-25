@@ -154,12 +154,12 @@ steps:
 - name: test 
   image: golang
   commands:
-  - cd provider/definition
+  - cd definition
   - go test ./... 
 
 - name: golangci-lint
   image: golangci/golangci-lint:v1.55
   commands:
-  - cd provider/definition
+  - cd definition
   - golangci-lint run
 
