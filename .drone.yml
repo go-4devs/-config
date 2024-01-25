@@ -5,7 +5,6 @@ name: default
 environment:
   VAULT_DEV_LISTEN_ADDRESS: http://vault:8200
   VAULT_DEV_ROOT_TOKEN_ID: dev
-  FDEVS_CONFIG_ETCD_HOST: etcd:2379
 
 steps:
 - name: test 
@@ -89,5 +88,34 @@ steps:
   image: golangci/golangci-lint:v1.55
   commands:
   - cd provider/toml
+  - golangci-lint run
+
+
+---
+kind: pipeline
+type: docker
+name: etcd
+
+environment:
+  FDEVS_CONFIG_ETCD_HOST: etcd:2379
+
+services:
+  - name: etcd
+    image: bitnami/etcd:3.5.11
+    environment:
+      ALLOW_NONE_AUTHENTICATION: yes
+
+steps:
+- name: test 
+  image: golang
+  failure: ignore # runtime/cgo: pthread_create failed: Operation not permitted
+  commands:
+  - cd provider/etcd
+  - go test ./... 
+
+- name: golangci-lint
+  image: golangci/golangci-lint:v1.55
+  commands:
+  - cd provider/etcd
   - golangci-lint run
 
