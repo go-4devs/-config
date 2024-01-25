@@ -1,0 +1,14 @@
+app:
+    title: yaml title
+    name:
+        var: 
+            - test
+        bool_var: true
+duration_var: 21m
+empty_var: 
+url_var: "http://google.com/"
+time_var: "2020-01-02T15:04:05Z"
+cfg:
+    duration: 21m
+    enabled: true
+    type: yaml
