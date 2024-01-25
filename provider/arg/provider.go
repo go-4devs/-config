@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -124,7 +123,6 @@ func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, err
 			}
 
 			return value.Decode(func(v interface{}) error {
-				log.Println(string(data))
 				return json.Unmarshal(data, v)
 			}), nil
 		}

@@ -3,7 +3,7 @@ package watcher
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"gitoa.ru/go-4devs/config"
@@ -14,13 +14,11 @@ var (
 	_ config.WatchProvider = (*Provider)(nil)
 )
 
-func New(duration time.Duration, provider config.NamedProvider, opts ...Option) *Provider {
+func New(duration time.Duration, provider config.Provider, opts ...Option) *Provider {
 	prov := &Provider{
-		NamedProvider: provider,
-		ticker:        time.NewTicker(duration),
-		logger: func(_ context.Context, msg string) {
-			log.Print(msg)
-		},
+		Provider: provider,
+		duration: duration,
+		logger:   slog.ErrorContext,
 	}
 
 	for _, opt := range opts {
@@ -30,7 +28,7 @@ func New(duration time.Duration, provider config.NamedProvider, opts ...Option) 
 	return prov
 }
 
-func WithLogger(l func(context.Context, string)) Option {
+func WithLogger(l func(context.Context, string, ...any)) Option {
 	return func(p *Provider) {
 		p.logger = l
 	}
@@ -39,24 +37,29 @@ func WithLogger(l func(context.Context, string)) Option {
 type Option func(*Provider)
 
 type Provider struct {
-	config.NamedProvider
-	ticker *time.Ticker
-	logger func(context.Context, string)
+	config.Provider
+	duration time.Duration
+	logger   func(context.Context, string, ...any)
 }
 
 func (p *Provider) Watch(ctx context.Context, callback config.WatchCallback, key ...string) error {
-	oldVar, err := p.NamedProvider.Value(ctx, key...)
+	old, err := p.Provider.Value(ctx, key...)
 	if err != nil {
 		return fmt.Errorf("failed watch variable: %w", err)
 	}
 
-	go func() {
+	go func(oldVar config.Value) {
+		ticker := time.NewTicker(p.duration)
+		defer func() {
+			ticker.Stop()
+		}()
+
 		for {
 			select {
-			case <-p.ticker.C:
-				newVar, err := p.NamedProvider.Value(ctx, key...)
+			case <-ticker.C:
+				newVar, err := p.Provider.Value(ctx, key...)
 				if err != nil {
-					p.logger(ctx, err.Error())
+					p.logger(ctx, "get value%v:%v", key, err.Error())
 				} else if !newVar.IsEquals(oldVar) {
 					callback(ctx, oldVar, newVar)
 					oldVar = newVar
@@ -65,7 +68,7 @@ func (p *Provider) Watch(ctx context.Context, callback config.WatchCallback, key
 				return
 			}
 		}
-	}()
+	}(old)
 
 	return nil
 }
