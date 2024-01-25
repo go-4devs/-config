@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/iancoleman/strcase v0.3.0
-	github.com/pelletier/go-toml v1.9.0
 	github.com/stretchr/testify v1.7.0
 	github.com/tidwall/gjson v1.7.5
 	gopkg.in/ini.v1 v1.62.0
