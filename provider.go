@@ -3,17 +3,18 @@ package config
 import "context"
 
 type Provider interface {
-	Read(ctx context.Context, key Key) (Variable, error)
+	Value(ctx context.Context, path ...string) (Value, error)
 }
 
-type WatchCallback func(ctx context.Context, oldVar, newVar Variable)
+type NamedProvider interface {
+	Name() string
+	Provider
+}
+
+type WatchCallback func(ctx context.Context, oldVar, newVar Value)
 
 type WatchProvider interface {
-	Watch(ctx context.Context, key Key, callback WatchCallback) error
+	Watch(ctx context.Context, callback WatchCallback, path ...string) error
 }
 
-type ReadConfig interface {
-	Value(ctx context.Context, name string) (Value, error)
-}
-
-type Factory func(ctx context.Context, cfg ReadConfig) (Provider, error)
+type Factory func(ctx context.Context, cfg Provider) (Provider, error)

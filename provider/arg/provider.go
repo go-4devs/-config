@@ -7,23 +7,27 @@ import (
 	"strings"
 
 	"gitoa.ru/go-4devs/config"
-	"gitoa.ru/go-4devs/config/key"
 	"gitoa.ru/go-4devs/config/value"
 	"gopkg.in/yaml.v3"
 )
+
+const Name = "arg"
 
 var _ config.Provider = (*Provider)(nil)
 
 type Option func(*Provider)
 
-func WithKeyFactory(factory config.KeyFactory) Option {
+func WithKeyFactory(factory func(s ...string) string) Option {
 	return func(p *Provider) { p.key = factory }
 }
 
 func New(opts ...Option) *Provider {
 	prov := Provider{
-		key:  key.Name,
+		key: func(s ...string) string {
+			return strings.Join(s, "-")
+		},
 		args: make(map[string][]string, len(os.Args[1:])),
+		name: Name,
 	}
 
 	for _, opt := range opts {
@@ -35,7 +39,8 @@ func New(opts ...Option) *Provider {
 
 type Provider struct {
 	args map[string][]string
-	key  config.KeyFactory
+	key  func(...string) string
+	name string
 }
 
 // nolint: cyclop
@@ -98,45 +103,29 @@ func (p *Provider) parse() error {
 }
 
 func (p *Provider) Name() string {
-	return "arg"
+	return p.name
 }
 
-func (p *Provider) IsSupport(ctx context.Context, key config.Key) bool {
-	return p.key(ctx, key) != ""
-}
-
-func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
+func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, error) {
 	if err := p.parse(); err != nil {
-		return config.Variable{
-			Name:     "",
-			Value:    nil,
-			Provider: p.Name(),
-		}, err
+		return nil, err
 	}
 
-	name := p.key(ctx, key)
+	name := p.key(path...)
 	if val, ok := p.args[name]; ok {
 		switch {
 		case len(val) == 1:
-			return config.Variable{
-				Name:     name,
-				Provider: p.Name(),
-				Value:    value.JString(val[0]),
-			}, nil
+			return value.JString(val[0]), nil
 		default:
 			var yNode yaml.Node
 
 			if err := yaml.Unmarshal([]byte("["+strings.Join(val, ",")+"]"), &yNode); err != nil {
-				return config.Variable{}, fmt.Errorf("arg: failed unmarshal yaml:%w", err)
+				return nil, fmt.Errorf("arg: failed unmarshal yaml:%w", err)
 			}
 
-			return config.Variable{
-				Name:     name,
-				Provider: p.Name(),
-				Value:    value.Decode(yNode.Decode),
-			}, nil
+			return value.Decode(yNode.Decode), nil
 		}
 	}
 
-	return config.Variable{}, fmt.Errorf("%w: %s", config.ErrVariableNotFound, name)
+	return nil, fmt.Errorf("%s:%w", p.Name(), config.ErrValueNotFound)
 }

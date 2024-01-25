@@ -4,22 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"strings"
+	"os"
 
 	"gitoa.ru/go-4devs/config"
 	"gitoa.ru/go-4devs/config/value"
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	Name = "yaml"
+)
+
 var _ config.Provider = (*Provider)(nil)
 
-func keyFactory(_ context.Context, key config.Key) []string {
-	return strings.Split(key.Name, "/")
-}
-
 func NewFile(name string, opts ...Option) (*Provider, error) {
-	in, err := ioutil.ReadFile(name)
+	in, err := os.ReadFile(name)
 	if err != nil {
 		return nil, fmt.Errorf("yaml_file: read error: %w", err)
 	}
@@ -38,7 +37,7 @@ func New(yml []byte, opts ...Option) (*Provider, error) {
 
 func create(opts ...Option) *Provider {
 	prov := Provider{
-		key: keyFactory,
+		name: Name,
 	}
 
 	for _, opt := range opts {
@@ -52,22 +51,20 @@ type Option func(*Provider)
 
 type Provider struct {
 	data node
-	key  func(context.Context, config.Key) []string
+	name string
 }
 
 func (p *Provider) Name() string {
-	return "yaml"
+	return p.name
 }
 
-func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
-	k := p.key(ctx, key)
+func (p *Provider) Value(_ context.Context, path ...string) (config.Value, error) {
 
-	return p.data.read(p.Name(), k)
+	return p.data.read(p.Name(), path)
 }
 
 func (p *Provider) With(data *yaml.Node) *Provider {
 	return &Provider{
-		key:  p.key,
 		data: node{Node: data},
 	}
 }
@@ -76,21 +73,17 @@ type node struct {
 	*yaml.Node
 }
 
-func (n *node) read(name string, keys []string) (config.Variable, error) {
+func (n *node) read(name string, keys []string) (config.Value, error) {
 	val, err := getData(n.Node.Content[0].Content, keys)
 	if err != nil {
-		if errors.Is(err, config.ErrVariableNotFound) {
-			return config.Variable{}, fmt.Errorf("%w: %s", config.ErrVariableNotFound, name)
+		if errors.Is(err, config.ErrValueNotFound) {
+			return nil, fmt.Errorf("%w: %s", config.ErrValueNotFound, name)
 		}
 
-		return config.Variable{}, fmt.Errorf("%w: %s", err, name)
+		return nil, fmt.Errorf("%w: %s", err, name)
 	}
 
-	return config.Variable{
-		Name:     strings.Join(keys, "."),
-		Provider: name,
-		Value:    value.Decode(val),
-	}, nil
+	return value.Decode(val), nil
 }
 
 func getData(node []*yaml.Node, keys []string) (func(interface{}) error, error) {
@@ -104,5 +97,5 @@ func getData(node []*yaml.Node, keys []string) (func(interface{}) error, error) 
 		}
 	}
 
-	return nil, config.ErrVariableNotFound
+	return nil, config.ErrValueNotFound
 }

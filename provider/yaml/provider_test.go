@@ -16,9 +16,9 @@ func TestProvider(t *testing.T) {
 	require.Nil(t, err)
 
 	read := []test.Read{
-		test.NewRead("duration_var", 21*time.Minute),
-		test.NewRead("app/name/bool_var", true),
-		test.NewRead("time_var", test.Time("2020-01-02T15:04:05Z")),
+		test.NewRead(21*time.Minute, "duration_var"),
+		test.NewRead(true, "app", "name", "bool_var"),
+		test.NewRead(test.Time("2020-01-02T15:04:05Z"), "time_var"),
 		test.NewReadConfig("cfg"),
 	}
 

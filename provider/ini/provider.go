@@ -10,55 +10,49 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+const (
+	Name      = "ini"
+	Separator = "."
+)
+
 var _ config.Provider = (*Provider)(nil)
 
 func New(data *ini.File) *Provider {
-	const nameParts = 2
-
 	return &Provider{
 		data: data,
-		resolve: func(ctx context.Context, key config.Key) (string, string) {
-			keys := strings.SplitN(key.Name, "/", nameParts)
-			if len(keys) == 1 {
-				return "", keys[0]
+		resolve: func(path []string) (string, string) {
+			if len(path) == 1 {
+				return "", path[0]
 			}
 
-			return keys[0], keys[1]
+			return strings.Join(path[:len(path)-1], Separator), strings.ToUpper(path[len(path)-1])
 		},
+		name: Name,
 	}
 }
 
 type Provider struct {
 	data    *ini.File
-	resolve func(ctx context.Context, key config.Key) (string, string)
-}
-
-func (p *Provider) IsSupport(ctx context.Context, key config.Key) bool {
-	section, name := p.resolve(ctx, key)
-
-	return section != "" && name != ""
+	resolve func(path []string) (string, string)
+	name    string
 }
 
 func (p *Provider) Name() string {
-	return "ini"
+	return p.name
 }
 
-func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
-	section, name := p.resolve(ctx, key)
+func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, error) {
+	section, name := p.resolve(path)
 
 	iniSection, err := p.data.GetSection(section)
 	if err != nil {
-		return config.Variable{}, fmt.Errorf("%w: %s: %w", config.ErrVariableNotFound, p.Name(), err)
+		return nil, fmt.Errorf("%w: %s: %w", config.ErrValueNotFound, p.Name(), err)
 	}
 
 	iniKey, err := iniSection.GetKey(name)
 	if err != nil {
-		return config.Variable{}, fmt.Errorf("%w: %s: %w", config.ErrVariableNotFound, p.Name(), err)
+		return nil, fmt.Errorf("%w: %s: %w", config.ErrValueNotFound, p.Name(), err)
 	}
 
-	return config.Variable{
-		Name:     section + ":" + name,
-		Provider: p.Name(),
-		Value:    value.JString(iniKey.String()),
-	}, nil
+	return value.JString(iniKey.String()), nil
 }

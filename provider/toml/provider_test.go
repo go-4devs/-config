@@ -17,12 +17,12 @@ func TestProvider(t *testing.T) {
 	m := []int{}
 
 	read := []test.Read{
-		test.NewRead("database.server", "192.168.1.1"),
-		test.NewRead("title", "TOML Example"),
-		test.NewRead("servers.alpha.ip", "10.0.0.1"),
-		test.NewRead("database.enabled", true),
-		test.NewRead("database.connection_max", 5000),
-		test.NewReadUnmarshal("database.ports", &[]int{8001, 8001, 8002}, &m),
+		test.NewRead("192.168.1.1", "database.server"),
+		test.NewRead("TOML Example", "title"),
+		test.NewRead("10.0.0.1", "servers.alpha.ip"),
+		test.NewRead(true, "database.enabled"),
+		test.NewRead(5000, "database.connection_max"),
+		test.NewReadUnmarshal(&[]int{8001, 8001, 8002}, &m, "database", "ports"),
 	}
 
 	test.Run(t, prov, read)

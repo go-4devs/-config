@@ -3,11 +3,16 @@ package toml
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pelletier/go-toml"
 	"gitoa.ru/go-4devs/config"
-	"gitoa.ru/go-4devs/config/key"
 	"gitoa.ru/go-4devs/config/value"
+)
+
+const (
+	Name      = "toml"
+	Separator = "."
 )
 
 var _ config.Provider = (*Provider)(nil)
@@ -26,7 +31,9 @@ type Option func(*Provider)
 func configure(tree *toml.Tree, opts ...Option) *Provider {
 	prov := &Provider{
 		tree: tree,
-		key:  key.Name,
+		key: func(s []string) string {
+			return strings.Join(s, Separator)
+		},
 	}
 
 	for _, opt := range opts {
@@ -47,25 +54,18 @@ func New(data []byte, opts ...Option) (*Provider, error) {
 
 type Provider struct {
 	tree *toml.Tree
-	key  config.KeyFactory
-}
-
-func (p *Provider) IsSupport(ctx context.Context, key config.Key) bool {
-	return p.key(ctx, key) != ""
+	key  func([]string) string
+	name string
 }
 
 func (p *Provider) Name() string {
-	return "toml"
+	return p.name
 }
 
-func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
-	if k := p.key(ctx, key); p.tree.Has(k) {
-		return config.Variable{
-			Name:     k,
-			Provider: p.Name(),
-			Value:    Value{Value: value.Value{Val: p.tree.Get(k)}},
-		}, nil
+func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, error) {
+	if k := p.key(path); p.tree.Has(k) {
+		return Value{Value: value.Value{Val: p.tree.Get(k)}}, nil
 	}
 
-	return config.Variable{}, config.ErrVariableNotFound
+	return nil, config.ErrValueNotFound
 }

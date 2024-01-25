@@ -16,11 +16,11 @@ func TestProvider(t *testing.T) {
 	prov := provider.New(js)
 	sl := []string{}
 	read := []test.Read{
-		test.NewRead("app.name.title", "config title"),
-		test.NewRead("app.name.timeout", time.Minute),
-		test.NewReadUnmarshal("app.name.var", &[]string{"name"}, &sl),
+		test.NewRead("config title", "app.name.title"),
+		test.NewRead(time.Minute, "app.name.timeout"),
+		test.NewReadUnmarshal(&[]string{"name"}, &sl, "app.name.var"),
 		test.NewReadConfig("cfg"),
-		test.NewRead("app.name.success", true),
+		test.NewRead(true, "app", "name", "success"),
 	}
 
 	test.Run(t, prov, read)

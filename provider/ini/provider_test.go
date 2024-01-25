@@ -14,13 +14,13 @@ func TestProvider(t *testing.T) {
 	file := test.NewINI()
 
 	read := []test.Read{
-		test.NewRead("project/PROJECT_BOARD_BASIC_KANBAN_TYPE", "To Do, In Progress, Done"),
-		test.NewRead("repository.editor/PREVIEWABLE_FILE_MODES", "markdown"),
-		test.NewRead("server/LOCAL_ROOT_URL", "http://0.0.0.0:3000/"),
-		test.NewRead("server/LFS_HTTP_AUTH_EXPIRY", 20*time.Minute),
-		test.NewRead("repository.pull-request/DEFAULT_MERGE_MESSAGE_SIZE", 5120),
-		test.NewRead("ui/SHOW_USER_EMAIL", true),
-		test.NewRead("cors/ENABLED", false),
+		test.NewRead("To Do, In Progress, Done", "project", "PROJECT_BOARD_BASIC_KANBAN_TYPE"),
+		test.NewRead("markdown", "repository.editor", "PREVIEWABLE_FILE_MODES"),
+		test.NewRead("http://0.0.0.0:3000/", "server", "LOCAL_ROOT_URL"),
+		test.NewRead(20*time.Minute, "server", "LFS_HTTP_AUTH_EXPIRY"),
+		test.NewRead(5120, "repository.pull-request", "DEFAULT_MERGE_MESSAGE_SIZE"),
+		test.NewRead(true, "ui", "SHOW_USER_EMAIL"),
+		test.NewRead(false, "cors", "enabled"),
 	}
 
 	prov := ini.New(file)

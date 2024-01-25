@@ -3,12 +3,17 @@ package etcd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"gitoa.ru/go-4devs/config"
-	"gitoa.ru/go-4devs/config/key"
 	"gitoa.ru/go-4devs/config/value"
 	pb "go.etcd.io/etcd/api/v3/mvccpb"
 	client "go.etcd.io/etcd/client/v3"
+)
+
+const (
+	Name      = "etcd"
+	Separator = "/"
 )
 
 var (
@@ -21,10 +26,14 @@ type Client interface {
 	client.Watcher
 }
 
-func NewProvider(client Client) *Provider {
+func NewProvider(namespace, appName string, client Client) *Provider {
 	p := Provider{
 		client: client,
-		key:    key.NsAppName("/"),
+		key: func(s ...string) string {
+			return strings.Join(s, Separator)
+		},
+		name:   Name,
+		prefix: namespace + Separator + appName,
 	}
 
 	return &p
@@ -32,34 +41,35 @@ func NewProvider(client Client) *Provider {
 
 type Provider struct {
 	client Client
-	key    config.KeyFactory
-}
-
-func (p *Provider) IsSupport(ctx context.Context, key config.Key) bool {
-	return p.key(ctx, key) != ""
+	key    func(...string) string
+	name   string
+	prefix string
 }
 
 func (p *Provider) Name() string {
-	return "etcd"
+	return p.name
+}
+func (p *Provider) Key(s []string) string {
+	return p.prefix + Separator + p.key(s...)
 }
 
-func (p *Provider) Read(ctx context.Context, key config.Key) (config.Variable, error) {
-	name := p.key(ctx, key)
+func (p *Provider) Value(ctx context.Context, path ...string) (config.Value, error) {
+	name := p.Key(path)
 
 	resp, err := p.client.Get(ctx, name, client.WithPrefix())
 	if err != nil {
-		return config.Variable{}, fmt.Errorf("%w: key:%s, prov:%s", err, name, p.Name())
+		return nil, fmt.Errorf("%w: key:%s, prov:%s", err, name, p.Name())
 	}
 
 	val, err := p.resolve(name, resp.Kvs)
 	if err != nil {
-		return config.Variable{}, fmt.Errorf("%w: key:%s, prov:%s", err, name, p.Name())
+		return nil, fmt.Errorf("%w: key:%s, prov:%s", err, name, p.Name())
 	}
 
 	return val, nil
 }
 
-func (p *Provider) Watch(ctx context.Context, key config.Key, callback config.WatchCallback) error {
+func (p *Provider) Watch(ctx context.Context, callback config.WatchCallback, path ...string) error {
 	go func(ctx context.Context, key string, callback config.WatchCallback) {
 		watch := p.client.Watch(ctx, key, client.WithPrevKV(), client.WithPrefix())
 		for w := range watch {
@@ -70,7 +80,7 @@ func (p *Provider) Watch(ctx context.Context, key config.Key, callback config.Wa
 				callback(ctx, oldVar, newVar)
 			}
 		}
-	}(ctx, p.key(ctx, key), callback)
+	}(ctx, p.Key(path), callback)
 
 	return nil
 }
@@ -87,23 +97,15 @@ func (p *Provider) getEventKvs(events []*client.Event) ([]*pb.KeyValue, []*pb.Ke
 	return kvs, old
 }
 
-func (p *Provider) resolve(key string, kvs []*pb.KeyValue) (config.Variable, error) {
+func (p *Provider) resolve(key string, kvs []*pb.KeyValue) (config.Value, error) {
 	for _, kv := range kvs {
 		switch {
 		case kv == nil:
-			return config.Variable{
-				Name:     key,
-				Provider: p.Name(),
-				Value:    nil,
-			}, nil
+			return nil, nil
 		case string(kv.Key) == key:
-			return config.Variable{
-				Value:    value.JBytes(kv.Value),
-				Name:     key,
-				Provider: p.Name(),
-			}, nil
+			return value.JBytes(kv.Value), nil
 		}
 	}
 
-	return config.Variable{}, fmt.Errorf("%w: name %s", config.ErrVariableNotFound, key)
+	return nil, fmt.Errorf("%w: name %s", config.ErrValueNotFound, key)
 }

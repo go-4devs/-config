@@ -156,3 +156,7 @@ func (s Value) ParseTime() (time.Time, error) {
 
 	return time.Time{}, config.ErrInvalidValue
 }
+
+func (s Value) IsEquals(in config.Value) bool {
+	return s.String() == in.String()
+}
