@@ -31,7 +31,11 @@ func (p *provider) Value(context.Context, ...string) (config.Value, error) {
 func TestWatcher(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer func() {
+		cancel()
+	}()
+
 	prov := &provider{}
 
 	w := watcher.New(time.Second, prov)
@@ -42,14 +46,19 @@ func TestWatcher(t *testing.T) {
 
 	err := w.Watch(
 		ctx,
-		func(ctx context.Context, oldVar, newVar config.Value) {
+		func(ctx context.Context, oldVar, newVar config.Value) error {
 			atomic.AddInt32(&cnt, 1)
 			wg.Done()
+			if atomic.LoadInt32(&cnt) == 2 {
+				return config.ErrStopWatch
+			}
+
+			return nil
 		},
 		"tmpname",
 	)
-	require.NoError(t, err)
 	wg.Wait()
 
+	require.NoError(t, err)
 	require.Equal(t, int32(2), cnt)
 }

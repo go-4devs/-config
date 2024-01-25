@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -61,7 +62,13 @@ func (p *Provider) Watch(ctx context.Context, callback config.WatchCallback, key
 				if err != nil {
 					p.logger(ctx, "get value%v:%v", key, err.Error())
 				} else if !newVar.IsEquals(oldVar) {
-					callback(ctx, oldVar, newVar)
+					if err := callback(ctx, oldVar, newVar); err != nil {
+						if errors.Is(err, config.ErrStopWatch) {
+							return
+						}
+						p.logger(ctx, "callback %v:%v", key, err)
+
+					}
 					oldVar = newVar
 				}
 			case <-ctx.Done():

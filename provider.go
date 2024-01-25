@@ -11,7 +11,7 @@ type NamedProvider interface {
 	Provider
 }
 
-type WatchCallback func(ctx context.Context, oldVar, newVar Value)
+type WatchCallback func(ctx context.Context, oldVar, newVar Value) error
 
 type WatchProvider interface {
 	Watch(ctx context.Context, callback WatchCallback, path ...string) error
