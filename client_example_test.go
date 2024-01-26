@@ -82,6 +82,7 @@ func ExampleClient_Watch() {
 	err = watcher.Watch(ctx, func(ctx context.Context, oldVar, newVar config.Value) error {
 		fmt.Println("update example_enable old: ", oldVar.Bool(), " new:", newVar.Bool())
 		wg.Done()
+
 		return nil
 	}, "example_enable")
 	if err != nil {
@@ -95,6 +96,7 @@ func ExampleClient_Watch() {
 	err = watcher.Watch(ctx, func(ctx context.Context, oldVar, newVar config.Value) error {
 		fmt.Println("update example_db_dsn old: ", oldVar.String(), " new:", newVar.String())
 		wg.Done()
+
 		return nil
 	}, "example_db_dsn")
 	if err != nil {
